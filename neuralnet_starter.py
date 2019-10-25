@@ -130,7 +130,7 @@ class Layer():
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
     self.x = x
-    self.a = x * w
+    self.a = w * self.x
     return self.a
   
   def backward_pass(self, delta):
@@ -138,12 +138,12 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_x = delta * self.w
-    self.d_w = self.x
-    self.d_b = self.b
+    self.d_x = delta * self.w.T
+    self.d_w = delta * self.x.T
+    self.d_b = np.copy(delta)
     return self.d_x
 
-      
+
 class Neuralnetwork():
   def __init__(self, config):
     self.layers = []
@@ -161,11 +161,12 @@ class Neuralnetwork():
     If targets == None, loss should be None. If not, then return the loss computed.
     """
     self.x = x
+    self.targets = targets
     loss = None
     for layer in layers:
       self.x = layer.forward_pass(self.x)
     self.y = softmax(self.x)
-    if targets is not None:
+    if self.targets is not None:
       loss = self.loss_func(self.y, targets)
     return loss, self.y
 
@@ -183,17 +184,33 @@ class Neuralnetwork():
     implement the backward pass for the whole network. 
     hint - use previously built functions.
     '''
-    for layer in layers[::-1]:
-      
-      
+    gradients = []
+    delta = (self.targets - self.y)
+    for layer in layers[len(layers)-2::-1]:
+      delta = layer.backward_pass(delta)
+      if type(layer) is Layer:
+        gradients.append(delta)
+    return gradients[::-1]
+
 
 def trainer(model, X_train, y_train, X_valid, y_valid, config):
   """
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
-  
-  
+  for epoch in range(config["epochs"]):
+    gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
+    for n in range(len(X_train)/config["batch_size"]):
+      for image_num in range(config["batch_size"]*n, config["batch_size"]*(n+1)):
+        loss, y = model.forward_pass(X_train[image_num], targets=y_train)
+        new_gradients = model.backward_pass()
+        gradients = [gradient + new_gradient for gradient, new_gradient in zip(gradients, new_gradients)]
+      for layer_num, layer in enumerate([layer for layer in model.layers[:-1] if type(layer) is Layer]):
+        layer.w += config["learning_rate"] * gradients[layer_num]
+          
+
+
+
 def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
