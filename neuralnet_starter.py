@@ -130,7 +130,7 @@ class Layer():
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
     self.x = x
-    self.a = w * self.x
+    self.a = self.x.T * w
     return self.a
   
   def backward_pass(self, delta):
