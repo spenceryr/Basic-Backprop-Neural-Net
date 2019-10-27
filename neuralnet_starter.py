@@ -180,7 +180,7 @@ class Neuralnetwork():
     output = [0 for _ in range(len(targets))]
     for y, t, i in zip(logits, targets, range(len(output))):
       output[i] = t * np.log(y)
-    return sum(output)
+    return -(sum(output))/len(targets)
 
     
   def backward_pass(self):
