@@ -18,7 +18,7 @@ def softmax(x):
   """
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
-  return output
+  return np.divide(x, sum(x))
 
 
 def load_data(fname):
