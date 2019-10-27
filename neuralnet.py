@@ -176,11 +176,7 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    output = [0 for _ in range(len(targets))]
-    for y, t, i in zip(logits, targets, range(len(output))):
-      output[i] = t * np.log(y)
-    return -(sum(output))/len(targets)
-
+    return -sum(targets * np.log(logits))/len(targets)
     
   def backward_pass(self):
     '''
@@ -294,7 +290,15 @@ def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
-  accuracy = 0
+  def test(model, X_test, y_test, config):
+  """
+  Write code to run the model on the data passed as input and return accuracy.
+  """
+  totalCorrect = 0
+  for x, t in zip(X_test, y_test):
+    _, y = model.forward_pass(x)
+    totalCorrect += is_correct(y, t)
+  accuracy = totalCorrect / len(X_test)
   return accuracy
       
 
