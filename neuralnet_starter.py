@@ -18,7 +18,8 @@ def softmax(x):
   """
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
-  return output
+  #assuming x = weighted sum of the inputs from the hidden to output layer
+  return np.divide(x, sum(x))
 
 
 def load_data(fname):
@@ -131,8 +132,13 @@ class Layer():
     """
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
+<<<<<<< HEAD
     self.x = np.insert(x, 0, 1)
     self.a = self.x.T.dot(np.concatenate(b, w))
+=======
+    self.x = x
+    self.a = self.x.T * self.w
+>>>>>>> e0191c8a6cbb42f2f1911c831a512e9d9bb6915c
     return self.a
   
   def backward_pass(self, delta):
@@ -165,7 +171,7 @@ class Neuralnetwork():
     self.x = x
     self.targets = targets
     loss = None
-    for layer in layers:
+    for layer in self.layers:
       self.x = layer.forward_pass(self.x)
     self.y = softmax(self.x)
     if self.targets is not None:
@@ -190,7 +196,11 @@ class Neuralnetwork():
     gradients = []
     bias_gradients = []
     delta = (self.targets - self.y)
+<<<<<<< HEAD
     for layer in layers[::-1]:
+=======
+    for layer in self.layers[len(self.layers)-2::-1]:
+>>>>>>> e0191c8a6cbb42f2f1911c831a512e9d9bb6915c
       delta = layer.backward_pass(delta)
       if type(layer) is Layer:
         gradients.append(layer.d_w)
