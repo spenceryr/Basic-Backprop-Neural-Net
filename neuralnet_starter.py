@@ -69,7 +69,7 @@ class Activation:
     Write the code for sigmoid activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    output = np.array(list(map(lambda a : 1/(1+np.exp(-a)), x)))
+    output = 1/(1+np.exp(-x))
     return output
 
   def tanh(self, x):
@@ -77,7 +77,7 @@ class Activation:
     Write the code for tanh activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    output = np.array(list(map(lambda a : (2/(1+np.exp(-2*a)))-1, x)))
+    output = (2/(1+np.exp(-2*x)))-1
     return output
 
   def ReLU(self, x):
@@ -94,7 +94,7 @@ class Activation:
     """
     def _sig(a):
       return 1/(1+np.exp(-a))
-    grad = np.array(list(map(lambda a : _sig(a) * (1-_sig(a)), self.x)))
+    grad = _sig(self.x) * (1-_sig(self.x))
     return grad
 
   def grad_tanh(self):
@@ -103,7 +103,7 @@ class Activation:
     """
     def _tanh(a):
       return (2/(1+np.exp(-2*a)))-1
-    grad = np.array(list(map(lambda a : 1-(_tanh(a)**2), self.x)))
+    grad = 1-(_tanh(self.x)**2)
     return grad
 
   def grad_ReLU(self):
@@ -118,6 +118,8 @@ class Layer():
   def __init__(self, in_units, out_units):
     np.random.seed(42)
     self.w = np.random.randn(in_units, out_units)  # Weight matrix
+    if config["activation"] is "ReLU":
+      self.w *= (1/(in_units + out_units))
     self.b = np.zeros((1, out_units)).astype(np.float32)  # Bias
     self.x = None  # Save the input to forward_pass in this
     self.a = None  # Save the output of forward pass in this (without activation)
@@ -129,8 +131,8 @@ class Layer():
     """
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
-    self.x = x
-    self.a = self.x.T * w
+    self.x = np.insert(x, 0, 1)
+    self.a = self.x.T.dot(np.concatenate(b, w))
     return self.a
   
   def backward_pass(self, delta):
@@ -138,8 +140,8 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_x = delta * self.w.T
-    self.d_w = delta * self.x.T
+    self.d_x = delta.dot(self.w.T)
+    self.d_w = x.reshape((len(x),1)).dot(delta.reshape((len(delta),1)).T)
     self.d_b = np.copy(delta)
     return self.d_x
 
@@ -176,8 +178,9 @@ class Neuralnetwork():
     '''
     output = [0 for _ in range(len(targets))]
     for y, t, i in zip(logits, targets, range(len(output))):
-      output[i] = t * np.log(y) + (1-t) * np.log(1-y)
-    return np.array(output)
+      output[i] = t * np.log(y)
+    return sum(output)
+
     
   def backward_pass(self):
     '''
@@ -185,29 +188,99 @@ class Neuralnetwork():
     hint - use previously built functions.
     '''
     gradients = []
+    bias_gradients = []
     delta = (self.targets - self.y)
-    for layer in layers[len(layers)-2::-1]:
+    for layer in layers[::-1]:
       delta = layer.backward_pass(delta)
       if type(layer) is Layer:
-        gradients.append(delta)
-    return gradients[::-1]
+        gradients.append(layer.d_w)
+        bias_gradients.append(layer.d_b)
+    return gradients[::-1], bias_gradients[::-1]
 
+
+def mini_batch(model, X_train, y_train, X_valid, y_valid, config):
+  regularization_func = lambda x: config["L2_penalty2"] * x
+  gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
+  bias_gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
+  for n in range(len(X_train)/config["batch_size"]):
+    for image_num in range(config["batch_size"]*n, config["batch_size"]*(n+1)):
+      loss, y = model.forward_pass(X_train[image_num], targets=y_train)
+      new_gradients, new_bias_gradients = model.backward_pass()
+      gradients = [gradient + new_gradient for gradient, new_gradient in zip(gradients, new_gradients)]
+      bias_gradients = [bias_gradients + new_bias_gradients for bias_gradients, new_bias_gradients in zip(bias_gradients, new_bias_gradients)]
+    for layer_num, layer in enumerate([layer for layer in model.layers[:-1] if type(layer) is Layer]):
+      layer.w += (config["learning_rate"] * gradients[layer_num]) + regularization_func(layer.w)
+      layer.b += (config["learning_rate"] * gradients[layer_num]) + regularization_func(layer.b)
+
+def is_correct(y, t):
+  if (np.where(y == np.max(y))[0][0]) == (np.where(t == 1)[0][0]):
+    return True
+  else:
+    return False
 
 def trainer(model, X_train, y_train, X_valid, y_valid, config):
   """
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
+  if config["momentum"]:
+    momentums = [np.zeros(layer.w.shape) for layer in model.layers if type(layer) is Layer]
+    momentums_bias = [np.zeros(layer.b.shape) for layer in model.layers if type(layer) is Layer]
+  if config["activation"] is "ReLU":
+    config["learning_rate"] *= (1/150)
+
+  train_accuracies = []
+  valid_accuracies = []
+  best_weights = []
+  early_stop_counter = 0
+  training_loss = []
+  validation_loss = []
+
   for epoch in range(config["epochs"]):
+    training_loss.append([])
+    validation_loss.append([])
+    train_accuracies.append([])
+    valid_accuracies.append([])
+
     gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
+    bias_gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
     for n in range(len(X_train)/config["batch_size"]):
       for image_num in range(config["batch_size"]*n, config["batch_size"]*(n+1)):
-        loss, y = model.forward_pass(X_train[image_num], targets=y_train)
-        new_gradients = model.backward_pass()
+        loss, y = model.forward_pass(X_train[image_num], targets=y_train[image_num])
+        training_loss[-1].append(loss)
+        train_accuracies[-1].append(1 if is_correct(y, y_train[image_num]) else 0)
+        new_gradients, new_bias_gradients = model.backward_pass()
         gradients = [gradient + new_gradient for gradient, new_gradient in zip(gradients, new_gradients)]
+        bias_gradients = [bias_gradients + new_bias_gradients for bias_gradients, new_bias_gradients in zip(bias_gradients, new_bias_gradients)]
       for layer_num, layer in enumerate([layer for layer in model.layers[:-1] if type(layer) is Layer]):
-        layer.w += config["learning_rate"] * gradients[layer_num]
-          
+        if config["momentum"]:
+          momentums[layer_num] = (config["momentum_gamma"] * momentums[layer_num]) + gradients[layer_num]
+          momentums_bias[layer_num] = (config["momentum_gamma"] * momentums_bias[layer_num]) + bias_gradients[layer_num]
+          layer.w += (config["learning_rate"] * momentums[layer_num]) + regularization_func(layer.w)
+          layer.b += (config["learning_rate"] * momentums_bias[layer_num]) + regularization_func(layer.b)
+        else:
+          layer.w += (config["learning_rate"] * gradients[layer_num]) + regularization_func(layer.w)
+          layer.b += (config["learning_rate"] * bias_gradients[layer_num]) + regularization_func(layer.b)
+    training_loss[-1] = np.mean(training_loss[-1])
+    train_accuracies[-1] = sum(train_accuracies[-1])/len(train_accuracies[-1])
+    for image_num in range(len(X_valid))
+      loss, y = model.forward_pass(X_valid[image_num], targets=y_valid[image_num])
+      validation_loss[-1].append(loss)
+      valid_accuracies[-1].append(1 if is_correct(y, y_train[image_num]) else 0)
+    validation_loss[-1] = np.mean(validation_loss[-1])
+    valid_accuracies[-1] = sum(valid_accuracies[-1])/len(valid_accuracies[-1])
+    if config["early_stop"]:
+      if len(validation_loss) > 1 and validation_loss[epoch] < validation_loss[epoch-1]:
+        if validation_loss[epoch] < min(validation_loss):
+          best_weights = [layer.w for layer in model.layers if type(layer) is Layer]
+        early_stop_counter = 0
+      else:
+        early_stop_counter += 1
+      if early_stop_counter >= config["early_stop_epoch"]:
+        break
+  if config["early_stop"]:
+    for layer, weights in zip([l for l in model.layers if type(l) is Layer], best_weights):
+      layer.w = weights
 
 
 
