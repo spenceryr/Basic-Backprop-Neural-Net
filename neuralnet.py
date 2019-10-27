@@ -3,14 +3,14 @@ import pickle
 
 
 config = {}
-config['layer_specs'] = [784, 100, 100, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
+config['layer_specs'] = [784, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
 config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
 config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
 config['epochs'] = 50  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
-config['momentum'] = False  # Denotes if momentum is to be applied or not
+config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
 config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
 
@@ -176,7 +176,11 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    return -sum(targets * logits)/len(targets)
+    output = [0 for _ in range(len(targets))]
+    for y, t, i in zip(logits, targets, range(len(output))):
+      output[i] = t * np.log(y)
+    return -(sum(output))/len(targets)
+
     
   def backward_pass(self):
     '''
@@ -206,6 +210,8 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   Write the code to train the network. Use values from config to set parameters
   such as L2 penalty, number of epochs, momentum, etc.
   """
+  regularization_func = lambda x: np.sum(x) * config["L2_penalty"]
+
   if config["momentum"]:
     momentums = [np.zeros(layer.w.shape) for layer in model.layers if type(layer) is Layer]
     momentums_bias = [np.zeros(layer.b.shape) for layer in model.layers if type(layer) is Layer]
@@ -220,6 +226,8 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   validation_loss = []
 
   for epoch in range(config["epochs"]):
+    print(epoch)
+    print("---------------")
     training_loss.append([])
     validation_loss.append([])
     train_accuracies.append([])
@@ -227,7 +235,8 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
 
     gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
     bias_gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
-    for n in range(len(X_train)/config["batch_size"]):
+    for n in range(len(X_train)//config["batch_size"]):
+      print(str(n) + "/" + str(len(X_train)//config["batch_size"]))
       for image_num in range(config["batch_size"]*n, config["batch_size"]*(n+1)):
         loss, y = model.forward_pass(X_train[image_num], targets=y_train[image_num])
         training_loss[-1].append(loss)
@@ -239,31 +248,45 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
         if config["momentum"]:
           momentums[layer_num] = (config["momentum_gamma"] * momentums[layer_num]) + gradients[layer_num]
           momentums_bias[layer_num] = (config["momentum_gamma"] * momentums_bias[layer_num]) + bias_gradients[layer_num]
-          layer.w += (config["learning_rate"] * momentums[layer_num]) + regularization_func(layer.w)
-          layer.b += (config["learning_rate"] * momentums_bias[layer_num]) + regularization_func(layer.b)
+          layer.w += (config["learning_rate"] * momentums[layer_num]) + regularization_func(np.concatenate((layer.b, layer.w)))
+          layer.b += (config["learning_rate"] * momentums_bias[layer_num]) + regularization_func(np.concatenate((layer.b, layer.w)))
         else:
-          layer.w += (config["learning_rate"] * gradients[layer_num]) + regularization_func(layer.w)
-          layer.b += (config["learning_rate"] * bias_gradients[layer_num]) + regularization_func(layer.b)
+          layer.w += (config["learning_rate"] * gradients[layer_num]) + regularization_func(np.concatenate((layer.b, layer.w)))
+          layer.b += (config["learning_rate"] * bias_gradients[layer_num]) + regularization_func(np.concatenate((layer.b, layer.w)))
     training_loss[-1] = np.mean(training_loss[-1])
-    train_accuracies[-1] = sum(train_accuracies[-1])/len(train_accuracies[-1])
+    print(training_loss[-1])
+    train_accuracies[-1] = (sum(train_accuracies[-1])/len(train_accuracies[-1])) * 100
+    print(train_accuracies[-1])
     for image_num in range(len(X_valid)):
       loss, y = model.forward_pass(X_valid[image_num], targets=y_valid[image_num])
       validation_loss[-1].append(loss)
       valid_accuracies[-1].append(1 if is_correct(y, y_train[image_num]) else 0)
     validation_loss[-1] = np.mean(validation_loss[-1])
-    valid_accuracies[-1] = sum(valid_accuracies[-1])/len(valid_accuracies[-1])
+    print(validation_loss[-1])
+    valid_accuracies[-1] = (sum(valid_accuracies[-1])/len(valid_accuracies[-1])) * 100
+    print(valid_accuracies[-1])
     if config["early_stop"]:
-      if len(validation_loss) > 1 and validation_loss[epoch] < validation_loss[epoch-1]:
-        if validation_loss[epoch] < min(validation_loss):
+      if len(validation_loss) > 1 and validation_loss[epoch] > validation_loss[epoch-1]:
+        early_stop_counter += 1
+      else:
+        if len(validation_loss) < 1 or (validation_loss[epoch] < min(validation_loss)):
           best_weights = [layer.w for layer in model.layers if type(layer) is Layer]
         early_stop_counter = 0
-      else:
-        early_stop_counter += 1
       if early_stop_counter >= config["early_stop_epoch"]:
         break
   if config["early_stop"]:
     for layer, weights in zip([l for l in model.layers if type(l) is Layer], best_weights):
       layer.w = weights
+
+  fig, graph = plt.subplots(nrows=1, ncols=1, figsize=(7,6), sharex=True)
+  fig.suptitle("Average Validation and Training Accuracies", y=1)
+  fig.tight_layout()
+  fig.subplots_adjust(top=.85, wspace=.3)
+  graph.set_ylabel("Accuracy")
+  graph.set_xlabel("# of Epochs")
+  graph.plot(list(range(config["epochs"])), valid_accuracies, linestyle='-', color='red', marker='o', label="validation")
+  graph.plot(list(range(config["epochs"])), train_accuracies, linestyle='-', color='blue', marker='o', label="train")
+  plt.savefig(config["activation"] + "_" + ("early_" if config["early_stop"] else "notearly_") + ("mom" if config["momentum"] else "notmom") + ".png", bbox_inches='tight')
 
 
 
@@ -271,6 +294,7 @@ def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
+  accuracy = 0
   return accuracy
       
 
