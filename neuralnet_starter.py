@@ -78,7 +78,7 @@ class Activation:
     Write the code for tanh activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    output = (2/(1+np.exp(-2*x)))-1
+    output = np.tanh(self.x)
     return output
 
   def ReLU(self, x):
@@ -102,9 +102,7 @@ class Activation:
     """
     Write the code for gradient through tanh activation function that takes in a numpy array and returns a numpy array.
     """
-    def _tanh(a):
-      return (2/(1+np.exp(-2*a)))-1
-    grad = 1-(_tanh(self.x)**2)
+    grad = 1-(np.tanh(self.x)**2)
     return grad
 
   def grad_ReLU(self):
