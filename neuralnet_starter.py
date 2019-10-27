@@ -132,13 +132,8 @@ class Layer():
     """
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
-<<<<<<< HEAD
     self.x = np.insert(x, 0, 1)
     self.a = self.x.T.dot(np.concatenate(b, w))
-=======
-    self.x = x
-    self.a = self.x.T * self.w
->>>>>>> e0191c8a6cbb42f2f1911c831a512e9d9bb6915c
     return self.a
   
   def backward_pass(self, delta):
@@ -196,11 +191,7 @@ class Neuralnetwork():
     gradients = []
     bias_gradients = []
     delta = (self.targets - self.y)
-<<<<<<< HEAD
     for layer in layers[::-1]:
-=======
-    for layer in self.layers[len(self.layers)-2::-1]:
->>>>>>> e0191c8a6cbb42f2f1911c831a512e9d9bb6915c
       delta = layer.backward_pass(delta)
       if type(layer) is Layer:
         gradients.append(layer.d_w)
@@ -208,25 +199,12 @@ class Neuralnetwork():
     return gradients[::-1], bias_gradients[::-1]
 
 
-def mini_batch(model, X_train, y_train, X_valid, y_valid, config):
-  regularization_func = lambda x: config["L2_penalty2"] * x
-  gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
-  bias_gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
-  for n in range(len(X_train)/config["batch_size"]):
-    for image_num in range(config["batch_size"]*n, config["batch_size"]*(n+1)):
-      loss, y = model.forward_pass(X_train[image_num], targets=y_train)
-      new_gradients, new_bias_gradients = model.backward_pass()
-      gradients = [gradient + new_gradient for gradient, new_gradient in zip(gradients, new_gradients)]
-      bias_gradients = [bias_gradients + new_bias_gradients for bias_gradients, new_bias_gradients in zip(bias_gradients, new_bias_gradients)]
-    for layer_num, layer in enumerate([layer for layer in model.layers[:-1] if type(layer) is Layer]):
-      layer.w += (config["learning_rate"] * gradients[layer_num]) + regularization_func(layer.w)
-      layer.b += (config["learning_rate"] * gradients[layer_num]) + regularization_func(layer.b)
-
 def is_correct(y, t):
   if (np.where(y == np.max(y))[0][0]) == (np.where(t == 1)[0][0]):
     return True
   else:
     return False
+
 
 def trainer(model, X_train, y_train, X_valid, y_valid, config):
   """
