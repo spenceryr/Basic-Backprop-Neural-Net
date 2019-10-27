@@ -4,15 +4,15 @@ import pickle
 
 config = {}
 config['layer_specs'] = [784, 50, 10]  # The length of list denotes number of hidden layers; each element denotes number of neurons in that layer; first element is the size of input layer, last element is the size of output layer.
-config['activation'] = 'sigmoid' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
-config['batch_size'] = 1000  # Number of training samples per batch to be passed to network
+config['activation'] = 'tanh' # Takes values 'sigmoid', 'tanh' or 'ReLU'; denotes activation function for hidden layers
+config['batch_size'] = 500  # Number of training samples per batch to be passed to network
 config['epochs'] = 50  # Number of epochs to train the model
 config['early_stop'] = True  # Implement early stopping or not
 config['early_stop_epoch'] = 5  # Number of epochs for which validation loss increases to be counted as overfitting
 config['L2_penalty'] = 0  # Regularization constant
 config['momentum'] = True  # Denotes if momentum is to be applied or not
 config['momentum_gamma'] = 0.9  # Denotes the constant 'gamma' in momentum expression
-config['learning_rate'] = 0.0001 # Learning rate of gradient descent algorithm
+config['learning_rate'] = 0.001 # Learning rate of gradient descent algorithm
 
 def softmax(x):
   """
@@ -222,8 +222,9 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   validation_loss = []
 
   for epoch in range(config["epochs"]):
-    print(epoch)
     print("---------------")
+    print(epoch)
+    print("---")
     training_loss.append([])
     validation_loss.append([])
     train_accuracies.append([])
@@ -232,7 +233,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
     gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
     bias_gradients = [0 for layer in model.layers[:-1] if type(layer) is Layer]
     for n in range(len(X_train)//config["batch_size"]):
-      print(str(n) + "/" + str(len(X_train)//config["batch_size"]))
+      #print(str(n) + "/" + str(len(X_train)//config["batch_size"]))
       for image_num in range(config["batch_size"]*n, config["batch_size"]*(n+1)):
         loss, y = model.forward_pass(X_train[image_num], targets=y_train[image_num])
         training_loss[-1].append(loss)
@@ -250,17 +251,17 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
           layer.w += (config["learning_rate"] * gradients[layer_num]) + regularization_func(np.concatenate((layer.b, layer.w)))
           layer.b += (config["learning_rate"] * bias_gradients[layer_num]) + regularization_func(np.concatenate((layer.b, layer.w)))
     training_loss[-1] = np.mean(training_loss[-1])
-    print(training_loss[-1])
+    print("train loss: " + str(training_loss[-1]))
     train_accuracies[-1] = (sum(train_accuracies[-1])/len(train_accuracies[-1])) * 100
-    print(train_accuracies[-1])
+    print("train accuracy: " + str(train_accuracies[-1]))
     for image_num in range(len(X_valid)):
       loss, y = model.forward_pass(X_valid[image_num], targets=y_valid[image_num])
       validation_loss[-1].append(loss)
       valid_accuracies[-1].append(1 if is_correct(y, y_train[image_num]) else 0)
     validation_loss[-1] = np.mean(validation_loss[-1])
-    print(validation_loss[-1])
+    print("validation loss: " + str(validation_loss[-1]))
     valid_accuracies[-1] = (sum(valid_accuracies[-1])/len(valid_accuracies[-1])) * 100
-    print(valid_accuracies[-1])
+    print("validation accuracy: " + str(valid_accuracies[-1]))
     if config["early_stop"]:
       if len(validation_loss) > 1 and validation_loss[epoch] > validation_loss[epoch-1]:
         early_stop_counter += 1
@@ -287,10 +288,6 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
 
 
 def test(model, X_test, y_test, config):
-  """
-  Write code to run the model on the data passed as input and return accuracy.
-  """
-  def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
