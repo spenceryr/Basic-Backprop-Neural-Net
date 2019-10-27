@@ -18,6 +18,7 @@ def softmax(x):
   """
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
+  #assuming x = weighted sum of the inputs from the hidden to output layer
   return np.divide(x, sum(x))
 
 
