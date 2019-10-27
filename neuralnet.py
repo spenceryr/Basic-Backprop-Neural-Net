@@ -19,7 +19,7 @@ def softmax(x):
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
   #assuming x = weighted sum of the inputs from the hidden to output layer
-  return np.divide(x, sum(x))
+  return np.divide(np.exp(x), (sum(np.exp(x))))
 
 
 def load_data(fname):
@@ -140,8 +140,8 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_b = -1 * np.copy(delta)
-    self.d_w = -1 * np.outer(self.x, delta)
+    self.d_b = np.copy(delta)
+    self.d_w = np.outer(self.x, delta)
     self.d_x = delta.dot(self.w.T)
     return self.d_x
 
