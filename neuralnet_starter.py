@@ -164,7 +164,7 @@ class Neuralnetwork():
     self.x = x
     self.targets = targets
     loss = None
-    for layer in layers:
+    for layer in self.layers:
       self.x = layer.forward_pass(self.x)
     self.y = softmax(self.x)
     if self.targets is not None:
@@ -187,7 +187,7 @@ class Neuralnetwork():
     '''
     gradients = []
     delta = (self.targets - self.y)
-    for layer in layers[len(layers)-2::-1]:
+    for layer in self.layers[len(self.layers)-2::-1]:
       delta = layer.backward_pass(delta)
       if type(layer) is Layer:
         gradients.append(delta)
