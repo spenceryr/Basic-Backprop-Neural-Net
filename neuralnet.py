@@ -19,7 +19,9 @@ def softmax(x):
   Write the code for softmax activation function that takes in a numpy array and returns a numpy array.
   """
   #assuming x = weighted sum of the inputs from the hidden to output layer
-  return np.divide(x, sum(x))
+  exp = np.vectorize(lambda x: np.power(np.e, x))
+  exp_x = exp(x)
+  return np.divide(exp_x, sum(exp_x))
 
 
 def load_data(fname):
@@ -140,8 +142,8 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_b = -1 * np.copy(delta)
-    self.d_w = -1 * np.outer(self.x, delta)
+    self.d_b = np.copy(delta)
+    self.d_w = np.outer(self.x, delta)
     self.d_x = delta.dot(self.w.T)
     return self.d_x
 
@@ -176,7 +178,7 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    return -sum(targets * logits)/len(targets)
+    return -sum(targets * np.log(logits))/len(targets)
     
   def backward_pass(self):
     '''
@@ -271,6 +273,15 @@ def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
+  def test(model, X_test, y_test, config):
+  """
+  Write code to run the model on the data passed as input and return accuracy.
+  """
+  totalCorrect = 0
+  for x, t in zip(X_test, y_test):
+    _, y = model.forward_pass(x)
+    totalCorrect += is_correct(y, t)
+  accuracy = totalCorrect / len(X_test)
   return accuracy
       
 
