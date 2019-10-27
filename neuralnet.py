@@ -290,10 +290,6 @@ def test(model, X_test, y_test, config):
   """
   Write code to run the model on the data passed as input and return accuracy.
   """
-  def test(model, X_test, y_test, config):
-  """
-  Write code to run the model on the data passed as input and return accuracy.
-  """
   totalCorrect = 0
   for x, t in zip(X_test, y_test):
     _, y = model.forward_pass(x)
