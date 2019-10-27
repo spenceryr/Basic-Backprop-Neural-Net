@@ -51,7 +51,7 @@ class Activation:
       return self.tanh(a)
     
     elif self.activation_type == "ReLU":
-      return self.relu(a)
+      return self.ReLU(a)
   
   def backward_pass(self, delta):
     if self.activation_type == "sigmoid":
@@ -86,7 +86,8 @@ class Activation:
     Write the code for ReLU activation function that takes in a numpy array and returns a numpy array.
     """
     self.x = x
-    output = np.array(list(map(lambda a : max(0,a), x)))
+    max_v = np.vectorize(lambda a: max(0,a))
+    output = max_v(x)
     return output
 
   def grad_sigmoid(self):
@@ -109,8 +110,8 @@ class Activation:
     """
     Write the code for gradient through ReLU activation function that takes in a numpy array and returns a numpy array.
     """
-    grad = np.array(list(map(lambda a : 1 if a > 0 else 0, self.x)))
-    return grad
+    grad_v = np.vectorize(lambda a: 1 if a > 0 else 0)
+    return grad_v(self.x)
 
 
 class Layer():
@@ -130,8 +131,8 @@ class Layer():
     """
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
-    self.x = np.insert(x, 0, 1)
-    self.a = self.x.T.dot(np.concatenate(b, w))
+    self.x = x
+    self.a = np.insert(self.x, 0, 1).T.dot(np.concatenate((self.b, self.w)))
     return self.a
   
   def backward_pass(self, delta):
@@ -139,9 +140,9 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
+    self.d_b = -1 * np.copy(delta)
+    self.d_w = -1 * np.outer(self.x, delta)
     self.d_x = delta.dot(self.w.T)
-    self.d_w = x.reshape((len(x),1)).dot(delta.reshape((len(delta),1)).T)
-    self.d_b = np.copy(delta)
     return self.d_x
 
 
@@ -175,11 +176,7 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    output = [0 for _ in range(len(targets))]
-    for y, t, i in zip(logits, targets, range(len(output))):
-      output[i] = t * np.log(y)
-    return -(sum(output))/len(targets)
-
+    return -sum(targets * logits)/len(targets)
     
   def backward_pass(self):
     '''
@@ -189,7 +186,7 @@ class Neuralnetwork():
     gradients = []
     bias_gradients = []
     delta = (self.targets - self.y)
-    for layer in layers[::-1]:
+    for layer in self.layers[::-1]:
       delta = layer.backward_pass(delta)
       if type(layer) is Layer:
         gradients.append(layer.d_w)
@@ -249,7 +246,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
           layer.b += (config["learning_rate"] * bias_gradients[layer_num]) + regularization_func(layer.b)
     training_loss[-1] = np.mean(training_loss[-1])
     train_accuracies[-1] = sum(train_accuracies[-1])/len(train_accuracies[-1])
-    for image_num in range(len(X_valid))
+    for image_num in range(len(X_valid)):
       loss, y = model.forward_pass(X_valid[image_num], targets=y_valid[image_num])
       validation_loss[-1].append(loss)
       valid_accuracies[-1].append(1 if is_correct(y, y_train[image_num]) else 0)
@@ -289,4 +286,3 @@ if __name__ == "__main__":
   X_test, y_test = load_data(test_data_fname)
   trainer(model, X_train, y_train, X_valid, y_valid, config)
   test_acc = test(model, X_test, y_test, config)
-
