@@ -132,7 +132,9 @@ class Layer():
     Write the code for forward pass through a layer. Do not apply activation function here.
     """
     self.x = x
-    self.a = np.insert(self.x, 0, 1).T.dot(np.concatenate((self.b, self.w)))
+    x_1 = np.append(np.ones((len(self.x), 1)), self.x, 1)
+    w_b = np.concatenate((self.b, self.w))
+    self.a = x_1.dot(w_b)
     return self.a
   
   def backward_pass(self, delta):
@@ -140,8 +142,8 @@ class Layer():
     Write the code for backward pass. This takes in gradient from its next layer as input,
     computes gradient for its weights and the delta to pass to its previous layers.
     """
-    self.d_b = np.copy(delta)
-    self.d_w = np.outer(self.x, delta)
+    self.d_b = np.dot(np.ones((1, len(delta))), delta)
+    self.d_w = np.dot(self.x.T, delta)
     self.d_x = delta.dot(self.w.T)
     return self.d_x
 
@@ -167,7 +169,7 @@ class Neuralnetwork():
     loss = None
     for layer in self.layers:
       self.x = layer.forward_pass(self.x)
-    self.y = softmax(self.x)
+    self.y = np.apply_along_axis(softmax, 1, self.x)
     if self.targets is not None:
       loss = self.loss_func(self.y, targets)
     return loss, self.y
@@ -176,7 +178,7 @@ class Neuralnetwork():
     '''
     find cross entropy loss between logits and targets
     '''
-    return -sum(targets * np.log(logits))/len(targets)
+    return -sum(sum(targets * np.log(logits)))/len(targets)
     
   def backward_pass(self):
     '''
@@ -194,11 +196,12 @@ class Neuralnetwork():
     return gradients[::-1], bias_gradients[::-1]
 
 
-def is_correct(y, t):
-  if (np.where(y == np.max(y))[0][0]) == (np.where(t == 1)[0][0]):
-    return True
-  else:
-    return False
+def num_correct(y, t):
+  '''
+  y = (n, output_units) shape matrix of outputs
+  t = (n, categories) shape matrix of targets 
+  '''
+  return sum(np.argmax(y, 1) == np.argmax(t, 1))
 
 
 def trainer(model, X_train, y_train, X_valid, y_valid, config):
