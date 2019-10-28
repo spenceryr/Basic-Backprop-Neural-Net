@@ -284,7 +284,7 @@ def trainer(model, X_train, y_train, X_valid, y_valid, config):
   fig.suptitle("Average Validation and Training Loss", y=1)
   fig.tight_layout()
   fig.subplots_adjust(top=.85, wspace=.3)
-  graph.set_ylabel("Accuracy")
+  graph.set_ylabel("Loss")
   graph.set_xlabel("# of Epochs")
   graph.plot(list(range(final_epoch + 1)), validation_loss, linestyle='-', color='red', marker='o', label="validation")
   graph.plot(list(range(final_epoch + 1)), training_loss, linestyle='-', color='blue', marker='o', label="train")
