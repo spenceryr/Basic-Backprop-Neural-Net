@@ -1,0 +1,7 @@
+Without Regularization: 89.53%
+With Regularization: 94.28%
+Sigmoid without regularization: 91.33%
+ReLLU without regularization: 90.11%
+25 Hidden Units: 75.54%
+100 Hidden Units: 78.66%
+2 Layers 47 Units Each Without Regularization: 84.32%
